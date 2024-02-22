@@ -2,20 +2,13 @@ import tensorflow as tf
 from tensorflow import keras
 
 # Read the tiny_shakespeare.txt
-with open('../data/raw/tiny_shakespeare.txt', 'r', encoding='utf-8') as f:
+with open('../../data/raw/tiny_shakespeare.txt', 'r', encoding='utf-8') as f:
     text = f.read()
-
-
-# Print the length of the text and the first 250 characters
-print(len(text))
-print(text[:250])
 
 
 # Create a vocabulary from the text
 chars = sorted(list(set(text)))
 vocab_size = len(chars)
-print(''.join(chars))
-print(vocab_size)
 
 
 # Create a dictionary to convert characters to integers and vice versa
@@ -23,6 +16,7 @@ stoi = {ch: i for i, ch in enumerate(chars)}
 itos = {i: ch for i, ch in enumerate(chars)}
 
 
+# Enconding and decoding functions
 def encode(input_string):
     return [stoi[c] for c in input_string]
 
@@ -38,8 +32,6 @@ print(decode(encode('hello')))
 
 # Convert shakespeare to a tensor
 data = tf.convert_to_tensor(encode(text), dtype=tf.int32)
-# print(data.shape, data.dtype)
-# print(data[:1000])
 
 
 # Split the data into training and validation sets
@@ -47,7 +39,6 @@ TRAIN_SPLIT = 0.9
 train_size = int(len(data) * TRAIN_SPLIT)
 train_data = data[:train_size]
 val_data = data[train_size:]
-# print(train_data.shape, val_data.shape)
 
 
 # Define block size
@@ -65,7 +56,7 @@ train_data[:BLOCK_SIZE + 1]
 
 
 # Set seed
-tf.random.set_seed(42)
+tf.random.set_seed(69)
 BATCH_SIZE = 4
 BLOCK_SIZE = 8
 
@@ -99,12 +90,10 @@ for b in range(BATCH_SIZE):  # batch dimension
         context = xb[b, :t+1]
         context_list = list(context.numpy())
         target = yb[b, t]
-        print(f"when input is {context_list} the target: {target}")
+        # print(f"when input is {context_list} the target: {target}")
 
 
 # Create Bigram Language Model
-
-
 class BigramLanguageModel(keras.Model):
 
     def __init__(self, vocab_size):
@@ -149,14 +138,9 @@ class BigramLanguageModel(keras.Model):
 
 model = BigramLanguageModel(vocab_size=vocab_size)
 logits, loss = model(xb, yb)
-print(logits.shape)
-print(loss)
 
 idx = tf.zeros((1, 1), dtype=tf.int32)
-print("idx")
-print(idx)
 generated_tokens = model.generate(idx, max_new_tokens=100)
-
 print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
 
@@ -165,26 +149,25 @@ print("Training the Bigram model")
 optimizer = keras.optimizers.legacy.Adam(learning_rate=1e-3)
 BATCH_SIZE = 32
 n_epochs = 10
-mean_loss = keras.metrics.Mean()
-metrics = [keras.metrics.MeanAbsoluteError()]
+n_steps = 100
+# mean_loss = keras.metrics.Mean()
+# metrics = [keras.metrics.MeanAbsoluteError()]
 
+
+# Training loop - How can i add progress bar?
 for epoch in range(1, n_epochs + 1):
     print(f"Epoch {epoch}/{n_epochs}")
-    for step in range(1, 100 + 1):
+    for step in range(1, n_steps + 1):
         xb, yb = get_batch('train')
         with tf.GradientTape() as tape:
             logits, loss = model(xb, yb)
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    #     mean_loss(loss)
-    #     for metric in metrics:
-    #         metric(yb, logits)
-    # for metric in [mean_loss] + metrics:
-    #     metric.reset_states()
-    print("Loss: ", loss)
+    print("Loss: ", loss.numpy())
 
 
 idx = tf.zeros((1, 1), dtype=tf.int32)
 generated_tokens = model.generate(idx, max_new_tokens=100)
 print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
+print(model.summary())
