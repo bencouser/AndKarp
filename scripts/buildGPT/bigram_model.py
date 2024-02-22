@@ -1,3 +1,5 @@
+import numpy
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
@@ -115,7 +117,8 @@ class BigramLanguageModel(keras.Model):
             logits_reshaped = tf.reshape(logits, (B*T, C))
             targets_reshaped = tf.reshape(targets, (B*T,))
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits_reshaped, labels=targets_reshaped)
+                logits=logits_reshaped,
+                labels=targets_reshaped)
             loss = tf.reduce_mean(loss)
 
         return logits, loss
@@ -137,7 +140,9 @@ class BigramLanguageModel(keras.Model):
 
 
 model = BigramLanguageModel(vocab_size=vocab_size)
-logits, loss = model(xb, yb)
+# Estimate the loss with the formula below
+# loss = -log(p) -> loss = -log(1/65) = 4.17
+logits, loss = model(xb, yb) # This matches well
 
 idx = tf.zeros((1, 1), dtype=tf.int32)
 generated_tokens = model.generate(idx, max_new_tokens=100)
@@ -148,22 +153,22 @@ print(decode(generated_tokens.numpy()[0].tolist()))
 print("Training the Bigram model")
 optimizer = keras.optimizers.legacy.Adam(learning_rate=1e-3)
 BATCH_SIZE = 32
-n_epochs = 10
-n_steps = 100
+n_epochs = 200
 # mean_loss = keras.metrics.Mean()
 # metrics = [keras.metrics.MeanAbsoluteError()]
 
-
+loss_history = numpy.zeros(n_epochs)
 # Training loop - How can i add progress bar?
 for epoch in range(1, n_epochs + 1):
     print(f"Epoch {epoch}/{n_epochs}")
-    for step in range(1, n_steps + 1):
+    for step in range(1, BATCH_SIZE + 1):
         xb, yb = get_batch('train')
         with tf.GradientTape() as tape:
             logits, loss = model(xb, yb)
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
     print("Loss: ", loss.numpy())
+    loss_history[epoch-1] = loss.numpy()
 
 
 idx = tf.zeros((1, 1), dtype=tf.int32)
@@ -171,3 +176,12 @@ generated_tokens = model.generate(idx, max_new_tokens=100)
 print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
 print(model.summary())
+
+# # save the model
+# model.save('../../models/bigram_model')
+
+plt.plot(loss_history)
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.show()
+plt.savefig('../../images/bigram_loss.png')
