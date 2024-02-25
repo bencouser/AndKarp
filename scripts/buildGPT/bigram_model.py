@@ -177,9 +177,6 @@ print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
 print(model.summary())
 
-# # save the model
-# model.save('../../models/bigram_model')
-
 plt.plot(loss_history)
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
