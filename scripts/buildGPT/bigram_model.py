@@ -87,6 +87,14 @@ print(yb)
 
 print('----')
 
+xb, yb = get_batch('train')
+print('inputs:')
+print(xb)
+print('targets:')
+print(yb)
+
+print('----')
+
 for b in range(BATCH_SIZE):  # batch dimension
     for t in range(BLOCK_SIZE):  # time dimension
         context = xb[b, :t+1]
@@ -128,11 +136,9 @@ class BigramLanguageModel(keras.Model):
             logits, _ = self(idx, targets=None)  # Predict next token logits
             # Focus on the logits for the last token in the sequence
             logits = logits[:, -1, :]
-            probs = tf.nn.softmax(logits)  # Convert logits to probabilities
+            probs = tf.nn.softmax(logits, axis=-1)  # Convert logits to probabilities
             # Sample next token from the probabilities
-            idx_next = tf.random.categorical(probs, num_samples=1)
-            # ensure idx_next has the same shape as idx
-            idx_next = tf.cast(idx_next, idx.dtype)
+            idx_next = tf.random.categorical(probs, num_samples=1, dtype=tf.int32)
             # Append sampled token to the sequence
             idx = tf.concat([idx, idx_next], axis=-1)
 
@@ -142,18 +148,18 @@ class BigramLanguageModel(keras.Model):
 model = BigramLanguageModel(vocab_size=vocab_size)
 # Estimate the loss with the formula below
 # loss = -log(p) -> loss = -log(1/65) = 4.17
-logits, loss = model(xb, yb) # This matches well
+# logits, loss = model(xb, yb) # This matches well
 
-idx = tf.zeros((1, 1), dtype=tf.int32)
-generated_tokens = model.generate(idx, max_new_tokens=100)
-print("Bigram model generated text:")
-print(decode(generated_tokens.numpy()[0].tolist()))
+# idx = tf.zeros((1, 1), dtype=tf.int32)
+# generated_tokens = model.generate(idx, max_new_tokens=100)
+# print("Bigram model generated text:")
+# print(decode(generated_tokens.numpy()[0].tolist()))
 
 
 print("Training the Bigram model")
-optimizer = keras.optimizers.legacy.Adam(learning_rate=1e-3)
-BATCH_SIZE = 32
-n_epochs = 200
+optimizer = keras.optimizers.legacy.Adam(learning_rate=1e-2)
+BATCH_SIZE = 64
+n_epochs = 10
 # mean_loss = keras.metrics.Mean()
 # metrics = [keras.metrics.MeanAbsoluteError()]
 
@@ -167,19 +173,23 @@ for epoch in range(1, n_epochs + 1):
             logits, loss = model(xb, yb)
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    print("Loss: ", loss.numpy())
+    print("Training Loss: ", loss.numpy())
     loss_history[epoch-1] = loss.numpy()
+    # get test loss
+    xb, yb = get_batch('val')
+    logits, loss = model(xb, yb)
+    print("Validation loss: ", loss.numpy())
 
 
 idx = tf.zeros((1, 1), dtype=tf.int32)
-generated_tokens = model.generate(idx, max_new_tokens=100)
+generated_tokens = model.generate(idx, max_new_tokens=500)
 print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
 print(model.summary())
-
-plt.plot(loss_history)
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.savefig('../../images/bigram_loss.png')
-plt.show()
-plt.close()
+#
+# plt.plot(loss_history)
+# plt.xlabel('Epochs')
+# plt.ylabel('Loss')
+# plt.savefig('../../images/bigram_loss.png')
+# plt.show()
+# plt.close()
