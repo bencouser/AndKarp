@@ -1,10 +1,10 @@
-import numpy
 import matplotlib.pyplot as plt
+import numpy
 import tensorflow as tf
 from tensorflow import keras
 
 # Read the tiny_shakespeare.txt
-with open('../../data/raw/tiny_shakespeare.txt', 'r', encoding='utf-8') as f:
+with open("../../data/raw/tiny_shakespeare.txt", "r", encoding="utf-8") as f:
     text = f.read()
 
 
@@ -24,12 +24,12 @@ def encode(input_string):
 
 
 def decode(input_list):
-    return ''.join([itos[i] for i in input_list])
+    return "".join([itos[i] for i in input_list])
 
 
 # Test the encode and decode functions
-print(encode('hello'))
-print(decode(encode('hello')))
+print(encode("hello"))
+print(decode(encode("hello")))
 
 
 # Convert shakespeare to a tensor
@@ -45,7 +45,7 @@ val_data = data[train_size:]
 
 # Define block size
 BLOCK_SIZE = 8
-train_data[:BLOCK_SIZE + 1]
+train_data[: BLOCK_SIZE + 1]
 
 
 # Demonstrating training
@@ -64,40 +64,39 @@ BLOCK_SIZE = 8
 
 
 def get_slice(i):
-    return data[i:i+BLOCK_SIZE]
+    return data[i : i + BLOCK_SIZE]
 
 
 def get_batch(split):
     # Generate a small batch of data of inputs x and targets y
-    data = train_data if split == 'train' else val_data
-    ix = tf.random.uniform(shape=(BATCH_SIZE,),
-                           minval=0,
-                           maxval=len(data) - BLOCK_SIZE,
-                           dtype=tf.int32)
+    data = train_data if split == "train" else val_data
+    ix = tf.random.uniform(
+        shape=(BATCH_SIZE,), minval=0, maxval=len(data) - BLOCK_SIZE, dtype=tf.int32
+    )
     x = tf.map_fn(get_slice, ix, dtype=tf.int32)
     y = tf.map_fn(get_slice, ix + 1, dtype=tf.int32)
     return x, y
 
 
-xb, yb = get_batch('train')
-print('inputs:')
+xb, yb = get_batch("train")
+print("inputs:")
 print(xb)
-print('targets:')
+print("targets:")
 print(yb)
 
-print('----')
+print("----")
 
-xb, yb = get_batch('train')
-print('inputs:')
+xb, yb = get_batch("train")
+print("inputs:")
 print(xb)
-print('targets:')
+print("targets:")
 print(yb)
 
-print('----')
+print("----")
 
 for b in range(BATCH_SIZE):  # batch dimension
     for t in range(BLOCK_SIZE):  # time dimension
-        context = xb[b, :t+1]
+        context = xb[b, : t + 1]
         context_list = list(context.numpy())
         target = yb[b, t]
         # print(f"when input is {context_list} the target: {target}")
@@ -105,13 +104,13 @@ for b in range(BATCH_SIZE):  # batch dimension
 
 # Create Bigram Language Model
 class BigramLanguageModel(keras.Model):
-
     def __init__(self, vocab_size):
         super().__init__()
         self.vocab_size = vocab_size
         # Using an Embedding layer similar to PyTorch's nn.Embedding
         self.token_embedding_table = keras.layers.Embedding(
-            input_dim=vocab_size, output_dim=vocab_size)
+            input_dim=vocab_size, output_dim=vocab_size
+        )
 
     def call(self, inputs, targets=None):
         # inputs and targets should be (B, T) tensors of integers
@@ -122,21 +121,25 @@ class BigramLanguageModel(keras.Model):
         loss = None
         if targets is not None:
             B, T, C = logits.shape
-            logits_reshaped = tf.reshape(logits, (B*T, C))
-            targets_reshaped = tf.reshape(targets, (B*T,))
+            logits_reshaped = tf.reshape(logits, (B * T, C))
+            targets_reshaped = tf.reshape(targets, (B * T,))
             loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits_reshaped,
-                labels=targets_reshaped)
+                logits=logits_reshaped, labels=targets_reshaped
+            )
             loss = tf.reduce_mean(loss)
 
         return logits, loss
 
     def generate(self, idx, max_new_tokens):
+        """
+        Generate new tokens given a starting token idx
+        """
         for _ in range(max_new_tokens):
             logits, _ = self(idx, targets=None)  # Predict next token logits
             # Focus on the logits for the last token in the sequence
             logits = logits[:, -1, :]
-            probs = tf.nn.softmax(logits, axis=-1)  # Convert logits to probabilities
+            # Convert logits to probabilities
+            probs = tf.nn.softmax(logits, axis=-1)
             # Sample next token from the probabilities
             idx_next = tf.random.categorical(probs, num_samples=1, dtype=tf.int32)
             # Append sampled token to the sequence
@@ -168,15 +171,15 @@ loss_history = numpy.zeros(n_epochs)
 for epoch in range(1, n_epochs + 1):
     print(f"Epoch {epoch}/{n_epochs}")
     for step in range(1, BATCH_SIZE + 1):
-        xb, yb = get_batch('train')
+        xb, yb = get_batch("train")
         with tf.GradientTape() as tape:
             logits, loss = model(xb, yb)
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
     print("Training Loss: ", loss.numpy())
-    loss_history[epoch-1] = loss.numpy()
+    loss_history[epoch - 1] = loss.numpy()
     # get test loss
-    xb, yb = get_batch('val')
+    xb, yb = get_batch("val")
     logits, loss = model(xb, yb)
     print("Validation loss: ", loss.numpy())
 
@@ -186,10 +189,10 @@ generated_tokens = model.generate(idx, max_new_tokens=500)
 print("Bigram model generated text:")
 print(decode(generated_tokens.numpy()[0].tolist()))
 print(model.summary())
-#
-# plt.plot(loss_history)
-# plt.xlabel('Epochs')
-# plt.ylabel('Loss')
-# plt.savefig('../../images/bigram_loss.png')
-# plt.show()
-# plt.close()
+
+plt.plot(loss_history)
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.savefig("../../images/bigram_loss.png")
+plt.show()
+plt.close()
